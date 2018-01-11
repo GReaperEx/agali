@@ -128,20 +128,21 @@ A20_done:
 	CMP EAX, 0xFFFFFFFF
 	JE kernelFail
 	
-	; Try to find the file "/boot/kernel/os.sys"
-	PUSH DWORD 8
+	; Try to find the file "/boot/kernel/kernel.sys"
+	PUSH DWORD 12
 	PUSH DWORD kernelName
 	PUSH DWORD [EAX + 0x7000 + 10]
 	PUSH DWORD [EAX + 0x7000 + 2]
 	CALL loadCDdir
 	CMP EAX, 0xFFFFFFFF
 	JE kernelFail
-	
+
 	; Loading the kernel to memory
-	
+
 	MOV ECX, [EAX + 0x7000 + 10]
+	ADD ECX, 2047
+	SHR ECX, 11
 	MOV EDX, [EAX + 0x7000 + 2]
-	MOV [kernelSize], ECX
 	MOV EDI, 0x100000
 .kernelLoadLoop:
 	PUSH DWORD 0
@@ -156,14 +157,11 @@ A20_done:
 	PUSH DWORD 0x7000
 	PUSH EDI
 	CALL memcpy
-	OR AX, AX
-	JZ .loadDone	
+
 	ADD EDI, 2048
 	INC EDX
-	SUB ECX, 2048
+	DEC ECX
 	JG .kernelLoadLoop
-	
-	JMP kernelFail
 .loadDone:
 	
 	PUSH WORD msgMemory
@@ -261,6 +259,8 @@ loadCDdir:
 	JZ .success
 	MOVZX EDI, BYTE [EBX + 0x7000]
 	ADD EBX, EDI
+	;MOVZX EDI, BYTE [EBX + 0x7001]
+	;ADD EBX, EDI
 	CMP EBX, 2048
 	JL .searchLoop
 	INC ECX
@@ -283,8 +283,7 @@ loadCDdir:
 loadSectorLBA:
 	PUSH BP
 	MOV BP, SP
-	PUSHA
-	POP AX
+	PUSHAD
 	
 	MOV  BYTE [diskAddressPacket + 0], 16
 	MOV  BYTE [diskAddressPacket + 1], 0
@@ -312,8 +311,9 @@ loadSectorLBA:
 .success:
 	MOV AX, 1
 .done:
-	PUSH AX
-	POPA
+	MOV [BP + 4], AX
+	POPAD
+	MOV AX, [BP + 4]
 	POP BP
 	RET 12
 
@@ -321,7 +321,7 @@ loadSectorLBA:
 printStr:
 	PUSH BP
 	MOV BP, SP
-	PUSHA
+	PUSHAD
 	
 	MOV SI, [BP + 4]
 .printLoop:
@@ -333,7 +333,7 @@ printStr:
 	JMP .printLoop
 .done:
 
-	POPA
+	POPAD
 	POP BP
 	RET 2
 
@@ -554,7 +554,7 @@ msgMemError db "Failed at detecting memory!", 0xD, 0xA, 0x0
 
 kernelDir1 db "BOOT"
 kernelDir2 db "KERNEL"
-kernelName db "OS.SYS;1"
+kernelName db "KERNEL.SYS;1"
 
 ;;;;;;;;;;;;; 32-bit Protected Mode starts here ;;;;;;;;;;;;;;;;;;;
 
@@ -568,27 +568,48 @@ loader32:
 
 ; Preparing the 64-bit paging tables
 
-pagesStart equ ((bLoaderEnd + (4096 - ((bLoaderEnd - bLoaderStart + 0x7C00) % 4096)) % 4096) - bLoaderStart + 0x7C00)
+pagesStart equ (bLoaderEnd - bLoaderStart + 0x7C00)
 
-	PUSH DWORD 4*4096
+	PUSH DWORD 10*4096
 	PUSH DWORD pagesStart
 	CALL memclear
 	
 	; Setting 1st PML4 entry
 	MOV DWORD [pagesStart], (pagesStart + 4096) | 0x3
 	MOV DWORD [pagesStart + 4], 0x0
+	; Setting kernel PML4 entry
+	MOV DWORD [pagesStart + 4088], (pagesStart + 2*4096) | 0x3
+	MOV DWORD [pagesStart + 4092], 0x0
 	
-	; Setting 1st PDT entry
-	MOV DWORD [pagesStart + 4096], (pagesStart + 2*4096) | 0x3
+	; Setting 1st PDT entry 
+	MOV DWORD [pagesStart + 4096], (pagesStart + 3*4096) | 0x3
 	MOV DWORD [pagesStart + 4096 + 4], 0x0
+	; Setting last PDT entry
+	MOV DWORD [pagesStart + 4096 + 4088], (pagesStart + 4096) | 0x3
+	MOV DWORD [pagesStart + 4096 + 4092], 0x0
 	
-	; Setting 1st PD entry
-	MOV DWORD [pagesStart + 2*4096], (pagesStart + 3*4096) | 0x3
-	MOV DWORD [pagesStart + 2*4096 + 4], 0x0
+	; Setting kernel PDT entry
+	MOV DWORD [pagesStart + 2*4096 + 4080], (pagesStart + 4*4096) | 0x3
+	MOV DWORD [pagesStart + 2*4096 + 4084], 0x0
+	; Setting last kernel PDT entry
+	MOV DWORD [pagesStart + 2*4096 + 4088], (pagesStart + 2*4096) | 0x3
+	MOV DWORD [pagesStart + 2*4096 + 4092], 0x0
 	
-	; Identity paging the first MiB
-	MOV ECX, 256
-	MOV EDI, pagesStart + 3*4096
+	; Setting 1st & 2nd PD entries
+	MOV DWORD [pagesStart + 3*4096], (pagesStart + 5*4096) | 0x3
+	MOV DWORD [pagesStart + 3*4096 +  4], 0x0
+	MOV DWORD [pagesStart + 3*4096 +  8], (pagesStart + 6*4096) | 0x3
+	MOV DWORD [pagesStart + 3*4096 + 12], 0x0
+	; Setting 1st & 2nd kernel PD entries
+	MOV DWORD [pagesStart + 4*4096], (pagesStart + 7*4096) | 0x3
+	MOV DWORD [pagesStart + 4*4096 +  4], 0x0
+	MOV DWORD [pagesStart + 4*4096 +  8], (pagesStart + 8*4096) | 0x3
+	MOV DWORD [pagesStart + 4*4096 + 12], 0x0
+	
+
+	; Identity paging the first 4 MiB
+	MOV ECX, 0x400000/4096
+	MOV EDI, (pagesStart + 5*4096)
 	XOR EAX, EAX
 	XOR EDX, EDX
 .identityLoop:
@@ -600,7 +621,7 @@ pagesStart equ ((bLoaderEnd + (4096 - ((bLoaderEnd - bLoaderStart + 0x7C00) % 40
 	ADD EAX, 4096
 	DEC ECX
 	JNZ .identityLoop
-	
+
 	CLI
 	
 	; Set CR4.PAE
@@ -670,12 +691,83 @@ loader64:
 	MOV GS, AX
 	MOV SS, AX
 	
-	; testing
-	MOV EDI, 0xB8000
-	MOV RAX, 0x1F201F201F201F20
-	MOV ECX, 500
+; Performing some sanity checks
+
+	MOV EAX, [0x100000]
+	CMP EAX, 0x464C457F
+	JNE ELF_Fail
+	MOV EAX, [0x100000 + 4]
+	CMP EAX, 0x00010102
+	JNE ELF_Fail
+	MOV EAX, [0x100000 + 16]
+	CMP EAX, 0x003E0002
+	JNE ELF_Fail
+	MOV EAX, [0x100000 + 20]
+	CMP EAX, 0x1
+	JNE ELF_Fail
+	
+; Load the format's .code, .data and .bss segments
+; Assuming all is inside a single segment
+
+	MOV RSI, [0x100000 + 0x20]
+	ADD RSI, 0x100000
+	
+	MOV RDX, [RSI + 0x28]
+	ADD RDX, 4095
+	
+	; Transfer pages from 0x100000 to 0xFFFFFFFF80000000
+	SHR RDX, 12
+	MOV [kernelSize], EDX
+	MOV RDI, [RSI + 0x8]
+	SHR RDI, 12
+	ADD RDI, 256
+	XOR RAX, RAX
+.upperLoop:
+	MOV R8, [pagesStart + RDI*8 + 5*4096]
+	MOV [pagesStart + RAX*8 + 7*4096], R8
+	INC RAX
+	INC RDI
+	DEC RDX
+	JNZ .upperLoop
+	
+	MOV RAX, pagesStart
+	MOV CR3, RAX
+	
+; Zeroing out the BSS segment
+	
+	MOV RSI, [0x100000 + 0x20]
+	ADD RSI, 0x100000
+	
+	MOV RCX, [RSI + 0x28]
+	MOV RDI, [RSI + 0x20]
+	
+	SUB RCX, RDI
+	ADD RCX, 4095
+	SHR RCX, 12
+	SHL RCX, 12
+	
+	ADD RDI, 4095
+	SHR RDI, 12
+	SHL RDI, 12
+	MOV RSI, 0xFFFFFFFF80000000
+	ADD RDI, RSI
+
+	SHR RCX, 3
+	XOR RAX, RAX
 	REP STOSQ
+	
+; Jumping to the kernel, finally!
+	MOV RAX, [0x100000 + 0x18]
+	CALL RAX
+
 	HLT
 
-times (2048-($-$$) % 2048) % 2048 db 0
+ELF_Fail:
+	MOV EDI, 0xB8000
+    MOV RAX, 0x1F201F201F201F20
+    MOV ECX, 500
+    REP STOSQ
+    HLT
+
+times (4096-($-$$+0x7C00) % 4096) % 4096 db 0
 bLoaderEnd:
