@@ -41,7 +41,18 @@ typedef union {
 
 void paging_init(void);
 
-void paging_alloc(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable);
-void paging_free(void* vAddr, BOOL freePhysical);
+void* paging_getPhysAddr(void* vAddr);
+
+void* paging_alloc(BOOL isSuper, BOOL isWritable);
+void paging_free(void* vAddr);
+void paging_map(void* pAddr, BOOL isSuper, BOOL isWritable);
+void paging_unmap(void* vAddr, BOOL freePhysical);
+
+static inline void invlpg(void* address)
+{
+    __asm__ __volatile__("invlpg (%0)" ::"r" (address) : "memory");
+}
+
+void reloadCR3(void);
 
 #endif // PAGING_H

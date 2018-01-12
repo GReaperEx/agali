@@ -2,6 +2,8 @@
 #include "memmap.h"
 #include "kstring.h"
 #include "sse.h"
+#include "gdt.h"
+#include "paging.h"
 
 void kmain(void)
 {
@@ -11,7 +13,7 @@ void kmain(void)
 #endif // NDEBUG
 
 	textui_init();
-	textui_setColor(0xF, 0x0);
+	textui_setColor(0x7, 0x0);
 	textui_clrscr();
 
 	DEBUG_PRINT("Hello World, agali locked and loaded!\n\n");
@@ -33,8 +35,14 @@ void kmain(void)
     textui_putchar('\n');
 #endif // NDEBUG
 
+    DEBUG_PRINT("Enabling SSE.\n");
     sse_enable();
-    DEBUG_PRINT("Enabled SSE.\n");
+
+    DEBUG_PRINT("Reinitializing GDT.\n");
+    gdt_init();
+
+    DEBUG_PRINT("Reinitializing paging.\n");
+    paging_init();
 
 	for (;;) {
 	    __asm__ __volatile__("hlt \n\t");

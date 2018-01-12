@@ -3,7 +3,7 @@ OUTPUT_FORMAT(elf64-x86-64)
 
 SECTIONS
 {
-    . = 0xFFFFFFFF80000000;
+	. = 0xFFFFFF0000000000;
     
     .text BLOCK(4K) : ALIGN (4K)
     {
@@ -16,6 +16,7 @@ SECTIONS
         *(.rodata*)
         *(.eh_frame)
         *(.comment)
+        *(.got*)
     }
     
     .bss BLOCK(4K) : ALIGN (4K)

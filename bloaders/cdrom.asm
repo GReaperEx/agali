@@ -578,22 +578,19 @@ pagesStart equ (bLoaderEnd - bLoaderStart + 0x7C00)
 	MOV DWORD [pagesStart], (pagesStart + 4096) | 0x3
 	MOV DWORD [pagesStart + 4], 0x0
 	; Setting kernel PML4 entry
-	MOV DWORD [pagesStart + 4088], (pagesStart + 2*4096) | 0x3
-	MOV DWORD [pagesStart + 4092], 0x0
+	MOV DWORD [pagesStart + 4080], (pagesStart + 2*4096) | 0x3
+	MOV DWORD [pagesStart + 4084], 0x0
+	; Setting last PML4 entry
+	MOV DWORD [pagesStart + 4088], (pagesStart) | 0x3
+	MOV DWORD [pagesStart + 4094], 0x0
 	
 	; Setting 1st PDT entry 
 	MOV DWORD [pagesStart + 4096], (pagesStart + 3*4096) | 0x3
 	MOV DWORD [pagesStart + 4096 + 4], 0x0
-	; Setting last PDT entry
-	MOV DWORD [pagesStart + 4096 + 4088], (pagesStart + 4096) | 0x3
-	MOV DWORD [pagesStart + 4096 + 4092], 0x0
 	
 	; Setting kernel PDT entry
-	MOV DWORD [pagesStart + 2*4096 + 4080], (pagesStart + 4*4096) | 0x3
-	MOV DWORD [pagesStart + 2*4096 + 4084], 0x0
-	; Setting last kernel PDT entry
-	MOV DWORD [pagesStart + 2*4096 + 4088], (pagesStart + 2*4096) | 0x3
-	MOV DWORD [pagesStart + 2*4096 + 4092], 0x0
+	MOV DWORD [pagesStart + 2*4096], (pagesStart + 4*4096) | 0x3
+	MOV DWORD [pagesStart + 2*4096 + 4], 0x0
 	
 	; Setting 1st & 2nd PD entries
 	MOV DWORD [pagesStart + 3*4096], (pagesStart + 5*4096) | 0x3
@@ -715,7 +712,7 @@ loader64:
 	MOV RDX, [RSI + 0x28]
 	ADD RDX, 4095
 	
-	; Transfer pages from 0x100000 to 0xFFFFFFFF80000000
+	; Transfer pages from 0x100000 to 0xFFFFFF0000000000
 	SHR RDX, 12
 	MOV [kernelSize], EDX
 	MOV RDI, [RSI + 0x8]
@@ -749,13 +746,15 @@ loader64:
 	ADD RDI, 4095
 	SHR RDI, 12
 	SHL RDI, 12
-	MOV RSI, 0xFFFFFFFF80000000
+	MOV RSI, 0xFFFFFF0000000000
 	ADD RDI, RSI
 
 	SHR RCX, 3
 	XOR RAX, RAX
 	REP STOSQ
 	
+	MOV EAX, [kernelSize]
+	MOV [0x7C00], EAX
 ; Jumping to the kernel, finally!
 	MOV RAX, [0x100000 + 0x18]
 	CALL RAX

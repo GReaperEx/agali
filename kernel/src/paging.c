@@ -3,69 +3,82 @@
 
 #define PAGE_STACK_SIZE 1024
 
-PageTableEntry globalPML4[512] __attribute__((aligned(4096)));
-PageTableEntry userPDT[512] __attribute__((aligned(4096)));
-PageTableEntry kernelPDT[512] __attribute__((aligned(4096)));
+static PageTableEntry globalPML4T[512] __attribute__((aligned(4096)));
 
-static inline PageTableEntry* _getMPL4entry(void* vAddr)
+static PageTableEntry kernelPDPT[512] __attribute__((aligned(4096)));
+static PageTableEntry kernelPDT[512] __attribute__((aligned(4096)));
+static PageEntry kernelPT[2*512] __attribute__((aligned(4096)));
+
+
+static inline PageTableEntry* _getPML4entry(void* vAddr)
 {
-    intptr _vAddr = (intptr)vAddr;
-    _vAddr &= 0xFFFFFF8000000000L;
-
-    if (_vAddr == 0) {
-        _vAddr = 0x0000007FFFFFFFF8L;
-    } else {
-        _vAddr = 0xFFFFFFFFFFFFFFF8L;
-    }
-
-    return (void*)_vAddr;
+    return (void*)(0xFFFFFF8000000000 | ((((intptr)vAddr >> 39) & 0x1FF) << 30));
 }
 
 static inline PageTableEntry* _getPDTentry(void* vAddr)
 {
-    intptr _vAddr = (intptr)vAddr;
-    _vAddr &= 0xFFFFFF8000000000L;
-
-    if (_vAddr == 0) {
-        _vAddr = 0x0000007FFFFFF000L & (((intptr)vAddr >> 27) & 0xFF8);
-    } else {
-        _vAddr = 0xFFFFFFFFFFFFF000L & (((intptr)vAddr >> 27) & 0xFF8);
-    }
-
-    return (void*)_vAddr;
+    return (void*)((intptr)_getPML4entry(vAddr) | ((((intptr)vAddr >> 30) & 0x1FF) << 21));
 }
 
 static inline PageTableEntry* _getPDentry(void* vAddr)
 {
-    intptr _vAddr = (intptr)vAddr;
-    _vAddr &= 0xFFFFFF8000000000L;
-
-    if (_vAddr == 0) {
-        _vAddr = 0x0000007FFFE00000L & (((intptr)vAddr >> 11) & 0x1FF000);
-    } else {
-        _vAddr = 0xFFFFFFFFFFE00000L & (((intptr)vAddr >> 11) & 0x1FF000);
-    }
-
-    return (void*)_vAddr;
+    return (void*)((intptr)_getPDTentry(vAddr) | ((((intptr)vAddr >> 21) & 0x1FF) << 12));
 }
 
 static inline PageEntry* _getPTentry(void* vAddr)
 {
-    intptr _vAddr = (intptr)vAddr;
-    _vAddr &= 0xFFFFFF8000000000L;
-
-    if (_vAddr == 0) {
-        _vAddr = 0x0000007FC0000000L & (((intptr)vAddr << 9) & 0x3FE00000);
-    } else {
-        _vAddr = 0xFFFFFFFFC0000000L & (((intptr)vAddr << 9) & 0x3FE00000);
-    }
-
-    return (void*)_vAddr;
+    return (void*)((intptr)_getPDentry(vAddr) | ((((intptr)vAddr >> 12) & 0x1FF) << 3));
 }
 
 void paging_init(void)
 {
-    int i;
+    uint64 i, j, kernelSize;
 
-    userPDT[0].rvalue = i*4096;
+    kernelSize = *((uint32*)0x7C00);
+
+    globalPML4T[510].rvalue = ((intptr)_getPTentry(kernelPDPT)->pAddr << 12) | 0x3;
+    globalPML4T[511].rvalue = ((intptr)_getPTentry(globalPML4T)->pAddr << 12) | 0x3;
+
+    kernelPDPT[0].rvalue = ((intptr)_getPTentry(kernelPDT)->pAddr << 12) | 0x3;
+
+    kernelPDT[0].rvalue = ((intptr)_getPTentry(&kernelPT[0])->pAddr << 12) | 0x3;
+    kernelPDT[1].rvalue = ((intptr)_getPTentry(&kernelPT[512])->pAddr << 12) | 0x3;
+
+    // Fetching the page entries from the temporary table
+    for (i = 0, j = 0xFFFFFF0000000000; i < kernelSize; ++i, j += 4096) {
+        kernelPT[i] = *_getPTentry((void*)j);
+        kernelPT[i].G = 1;
+    }
+
+    // Enabling global pages
+    __asm__ __volatile__(
+        "mov %%cr4, %%rax \n\t"
+        "or $0x80, %%rax \n\t"
+        "mov %%rax, %%cr4 \n\t"
+    ::: "%eax", "memory"
+    );
+
+    reloadCR3();
+}
+
+void* paging_getPhysAddr(void* vAddr)
+{
+    if (_getPML4entry(vAddr)->P) {
+        if (_getPDTentry(vAddr)->P) {
+            if (_getPDentry(vAddr)->P) {
+                PageEntry* entry = _getPTentry(vAddr);
+                if (entry->P) {
+                    return (void*)(((uint64)entry->pAddr << 12) | ((intptr)vAddr & 0xFFF));
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+void reloadCR3(void)
+{
+    void* address = paging_getPhysAddr(globalPML4T);
+
+    __asm__ __volatile__("mov %0, %%cr3 \n\t" ::"r" (address) : "memory");
 }

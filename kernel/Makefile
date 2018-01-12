@@ -10,7 +10,7 @@ $(shell mkdir -p $(OBJD) >/dev/null)
 SRCS := $(wildcard $(SRCD)/*.c) $(wildcard $(SRCD)/*.asm)
 OBJS := $(patsubst $(SRCD)/%.asm,$(OBJD)/%.o,$(patsubst $(SRCD)/%.c,$(OBJD)/%.o,$(SRCS)))
 
-CFLAGS = -Wall -Wextra -nostdlib -fno-builtin -nostartfiles -nodefaultlibs -O2 -mno-ms-bitfields -m64 -mcmodel=kernel
+CFLAGS = -Wall -Wextra -nostdlib -fno-builtin -nostartfiles -nodefaultlibs -O2 -mno-ms-bitfields -m64 -mcmodel=medium -fPIC
 
 ifeq ($(ENV), windows)
   LD = i686-elf-ld
@@ -36,7 +36,7 @@ $(OBJD)/%.o : $(SRCD)/%.asm $(OBJD)/%.d
 $(OBJD)/%.d: ;
 .PRECIOUS: $(OBJD)/%.d
 
-include $(wildcard $(patsubst %,$(OBJD)/%.d,$(basename $(SRCS))))
+include $(wildcard $(patsubst $(SRCD)/%,$(OBJD)/%.d,$(basename $(SRCS))))
 
 .PHONY : clean
 clean :
