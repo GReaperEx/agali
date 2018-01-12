@@ -43,9 +43,11 @@ void paging_init(void);
 
 void* paging_getPhysAddr(void* vAddr);
 
-void* paging_alloc(BOOL isSuper, BOOL isWritable);
-void paging_free(void* vAddr);
-void paging_map(void* pAddr, BOOL isSuper, BOOL isWritable);
+void* paging_alloc(int amount, BOOL isSuper, BOOL isWritable);
+void* paging_realloc(void* oldPtr, int oldAmount, int newAmount, BOOL isSuper, BOOL isWritable);
+void paging_free(void* oldPtr, int oldAmount);
+
+void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable);
 void paging_unmap(void* vAddr, BOOL freePhysical);
 
 static inline void invlpg(void* address)
