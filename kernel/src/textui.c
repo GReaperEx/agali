@@ -172,10 +172,13 @@ void textui_puts(const char* str)
 
 static void _scrollLine(void)
 {
-    int i = textui_info.maxColumns;
+    int i;
     int areaSize = textui_info.maxColumns*textui_info.maxRows;
 
-    for (; i < areaSize; ++i) {
+    for (i = textui_info.maxColumns; i < areaSize; ++i) {
         textui_info.videoBase[i - textui_info.maxColumns] = textui_info.videoBase[i];
+    }
+    for (i = i - textui_info.maxColumns; i < areaSize; ++i) {
+        textui_info.videoBase[i] = (textui_info.videoBase[i] & 0xFF00) | ' ';
     }
 }

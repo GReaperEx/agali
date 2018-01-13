@@ -6,6 +6,8 @@ static struct __attribute__((packed)) {
     uint64 offset;
 } GDTptr;
 
+void resetSegments(void);
+
 void gdt_init(void)
 {
     GDT[1].access = 0x9A; // Kernel code segment
@@ -20,5 +22,8 @@ void gdt_init(void)
     GDTptr.size = sizeof(GDT) - 1;
     GDTptr.offset = (uint64)GDT;
 
-    __asm__ __volatile__("lgdt (%0) \n\t" :: "r"(GDT) : "memory");
+    __asm__ __volatile__(
+        "lgdt (%0) \n\t"
+     :: "r"(&GDTptr) : "memory"
+    );
 }

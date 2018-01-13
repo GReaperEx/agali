@@ -1,6 +1,5 @@
 #include "paging.h"
 #include "memmap.h"
-#include "kstring.h"
 
 #define PAGE_STACK_SIZE 1024
 
@@ -10,25 +9,24 @@ static PageTableEntry kernelPDPT[512] __attribute__((aligned(4096)));
 static PageTableEntry kernelPDT[512] __attribute__((aligned(4096)));
 static PageEntry kernelPT[2*512] __attribute__((aligned(4096)));
 
-
 static inline PageTableEntry* _getPML4entry(void* vAddr)
 {
-    return (PageTableEntry*)(0xFFFFFFFFFFFFF000) + (((intptr)vAddr >> 39) & 0x1FF);
+    return (PageTableEntry*)0xFFFFFFFFFFFFF000 + (((intptr)vAddr >> 39) & 0x1FF);
 }
 
 static inline PageTableEntry* _getPDTentry(void* vAddr)
 {
-    return (PageTableEntry*)(0xFFFFFFFFFFE00000) + (((intptr)vAddr >> 30) & 0x1FF);
+    return (PageTableEntry*)0xFFFFFFFFFFE00000 + (((intptr)vAddr >> 30) & 0x3FFFF);
 }
 
 static inline PageTableEntry* _getPDentry(void* vAddr)
 {
-    return (PageTableEntry*)(0xFFFFFFFFC0000000) + (((intptr)vAddr >> 21) & 0x1FF);
+    return (PageTableEntry*)0xFFFFFFFFC0000000 + (((intptr)vAddr >> 21) & 0x7FFFFFF);
 }
 
 static inline PageEntry* _getPTentry(void* vAddr)
 {
-    return (PageEntry*)(0xFFFFFF8000000000) + (((intptr)vAddr >> 12) & 0x1FF);
+    return (PageEntry*)0xFFFFFF8000000000 + (((intptr)vAddr >> 12) & 0xFFFFFFFFF);
 }
 
 static struct {
@@ -53,7 +51,7 @@ static void* _nextAvailPage(void)
         }
     }
 
-    return NULL;
+    return pAddr;
 }
 
 void paging_init(void)
@@ -99,7 +97,7 @@ void paging_init(void)
 
     curMemBound = k;
 
-    // Identity page the 1st MiB
+    // Identity paging the 1st MiB
     for (i = 0; i < 0x100000; i += 4096) {
         paging_map((void*)i, (void*)i, TRUE, TRUE);
     }
@@ -127,11 +125,12 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
 {
     PageTableEntry* pte;
     PageEntry* pe;
+    int i;
 
     pte = _getPML4entry(vAddr);
     if (pte->P == 0) {
         if (pageStack.curIndex > 0) {
-            pte->rvalue = (uint64)pageStack.base[pageStack.curIndex--] | 0x3;
+            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
         } else {
             void* newAddr = _nextAvailPage();
             if (newAddr == NULL) {
@@ -140,12 +139,17 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
             pte->rvalue = (uint64)newAddr | 0x3;
         }
         invlpg(_getPDTentry(vAddr));
+
+        PageTableEntry* newPDPT = (void*)((intptr)_getPDTentry(vAddr) & ~0xFFFUL);
+        for (i = 0; i < 512; ++i) {
+            newPDPT[i].rvalue = 0;
+        }
     }
 
     pte = _getPDTentry(vAddr);
     if (pte->P == 0) {
         if (pageStack.curIndex > 0) {
-            pte->rvalue = (uint64)pageStack.base[pageStack.curIndex--] | 0x3;
+            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
         } else {
             void* newAddr = _nextAvailPage();
             if (newAddr == NULL) {
@@ -154,12 +158,17 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
             pte->rvalue = (uint64)newAddr | 0x3;
         }
         invlpg(_getPDentry(vAddr));
+
+        PageTableEntry* newPDT = (void*)((intptr)_getPDentry(vAddr) & ~0xFFFUL);
+        for (i = 0; i < 512; ++i) {
+            newPDT[i].rvalue = 0;
+        }
     }
 
     pte = _getPDentry(vAddr);
     if (pte->P == 0) {
         if (pageStack.curIndex > 0) {
-            pte->rvalue = (uint64)pageStack.base[pageStack.curIndex--] | 0x3;
+            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
         } else {
             void* newAddr = _nextAvailPage();
             if (newAddr == NULL) {
@@ -168,16 +177,23 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
             pte->rvalue = (uint64)newAddr | 0x3;
         }
         invlpg(_getPTentry(vAddr));
+
+        PageEntry* newPT = (void*)((intptr)_getPTentry(vAddr) & ~0xFFFUL);
+        for (i = 0; i < 512; ++i) {
+            newPT[i].rvalue = 0;
+        }
     }
 
-    // Silently fails if the page is already mapped
+    // Silently unmaps if the page is already mapped
     pe = _getPTentry(vAddr);
-    if (pe->P == 0) {
-        pe->rvalue = ((uint64)pAddr & 0xFFFFFFFFFFFFF000) | 0x1;
-        pte->RW = (isWritable == TRUE);
-        pte->US = (isSuper == FALSE);
-        invlpg(vAddr);
+    if (pe->P == 1) {
+        paging_unmap(vAddr, TRUE);
     }
+    pe->rvalue = ((uint64)pAddr & 0x000FFFFFFFFFF000) | 0x1;
+    pe->RW = (isWritable == TRUE);
+    pe->US = (isSuper == FALSE);
+    pe->G = (isSuper == TRUE);
+    invlpg(vAddr);
 }
 
 void paging_unmap(void* vAddr, BOOL freePhysical)
@@ -188,11 +204,13 @@ void paging_unmap(void* vAddr, BOOL freePhysical)
             entry->P = 0;
             if (freePhysical) {
                 if (pageStack.curIndex*8 >= pageStack.curSize) {
-                    paging_map((void*)((intptr)pageStack.base + pageStack.curSize), (uint64)entry->pAddr << 12, TRUE, TRUE);
+                    paging_map((void*)((intptr)pageStack.base + pageStack.curSize), (void*)((uint64)entry->pAddr << 12), TRUE, TRUE);
                     pageStack.curSize += 4096;
+                } else {
+                    pageStack.base[pageStack.curIndex++] = (void*)((uint64)entry->pAddr << 12);
+                    entry->rvalue = 0;
+                    invlpg(vAddr);
                 }
-                pageStack.base[pageStack.curIndex++] = (uint64)entry->pAddr << 12;
-                entry->rvalue = 0;
             }
         }
     }
@@ -202,7 +220,7 @@ void* paging_alloc(int amount, BOOL isSuper, BOOL isWritable)
 {
 }
 
-void* paging_realloc(void* oldPtr, int oldAmount, int newAmount, BOOL isSuper, BOOL isWritable)
+void* paging_realloc(void* oldPtr, int oldAmount, int newAmount)
 {
 }
 

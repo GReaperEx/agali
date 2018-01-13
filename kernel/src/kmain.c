@@ -4,6 +4,8 @@
 #include "sse.h"
 #include "gdt.h"
 #include "paging.h"
+#include "idt.h"
+#include "exceptions.h"
 
 void kmain(void)
 {
@@ -18,7 +20,7 @@ void kmain(void)
 
 	DEBUG_PRINT("Hello World, agali locked and loaded!\n\n");
 
-	DEBUG_PRINT("Initializing memory.\n");
+	DEBUG_PRINT("Detecting memory.\n");
     memmap_init();
 #ifndef NDEBUG
     memmap_getMemorySizes(&memSizes[0], &memSizes[1], &memSizes[2], &memSizes[3], &memSizes[4]);
@@ -41,8 +43,14 @@ void kmain(void)
     DEBUG_PRINT("Reinitializing GDT.\n");
     gdt_init();
 
+    idt_init();
+    DEBUG_PRINT("Enabling CPU exceptions.\n");
+    exceptions_init();
+
     DEBUG_PRINT("Reinitializing paging.\n");
     paging_init();
+
+    *((uint64*)0x00000000C0000321) = 123;
 
 	for (;;) {
 	    __asm__ __volatile__("hlt \n\t");
