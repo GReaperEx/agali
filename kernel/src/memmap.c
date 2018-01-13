@@ -36,7 +36,7 @@ void memmap_init(void)
     DEBUG_PRINT("Detected memory map:\n");
     for (i = 0; i < mmBIOSsize; ++i) {
         if ((mmBIOS[i].type >= 1 && mmBIOS[i].type <= 5) && (mmBIOS[i].extBitfield & 0x3) == 1) {
-            mm_addToSorted(mmBIOS[i]);
+            memmap.entries[memmap.amount++] = mmBIOS[i];
         }
 #ifndef NDEBUG
         textui_puts("\tBase: ");
@@ -65,64 +65,20 @@ void memmap_init(void)
             memmap.entries[i+1].base += overlap;
         }
     }
-
-    DEBUG_PRINT("Cleaned and sorted memory map:\n");
-#ifndef NDEBUG
-    for (i = 0; i < memmap.amount; ++i) {
-        textui_puts("\tBase: ");
-        textui_puts(int2str(memmap.entries[i].base, 16, buffer, sizeof(buffer)));
-        textui_putchar(' ');
-        textui_puts("Size: ");
-        textui_puts(int2str(memmap.entries[i].size, 16, buffer, sizeof(buffer)));
-        textui_putchar(' ');
-        textui_puts("Type: ");
-        textui_puts(int2str(memmap.entries[i].type, 10, buffer, sizeof(buffer)));
-        textui_putchar('\n');
-    }
-#endif // NDEBUG
-}
-
-void mm_addToSorted(memmapEntry mmEntry)
-{
-    int i, index;
-
-    index = mm_findEntry((void*)mmEntry.base);
-    ++memmap.amount;
-
-    if (memmap.amount > 0 && memmap.entries[index].base <= mmEntry.base) {
-        ++index;
-    }
-
-    for (i = memmap.amount - 1; i > index; --i) {
-        memmap.entries[i] = memmap.entries[i-1];
-    }
-    memmap.entries[i] = mmEntry;
 }
 
 int mm_findEntry(void* address)
 {
-    uint64 l = 0, r = memmap.amount - 1;
+    uint64 i;
     uint64 addr = (uint64)address;
 
-    if (memmap.amount == 0) {
-        return 0;
-    }
-
-    while (l < r)
-    {
-        uint64 m = l + (r-l)/2;
-        uint64 base = memmap.entries[m].base;
-
-        if (base < addr) {
-            l = m + 1;
-        } else if (base + memmap.entries[m].size >= addr){
-            r = m - 1;
-        } else {
+    for (i = 0; i < memmap.amount; ++i) {
+        if (memmap.entries[i].base <= addr && memmap.entries[i].base + memmap.entries[i].size > addr) {
             break;
         }
     }
 
-    return l + (r-l)/2;
+    return i;
 }
 
 BOOL memmap_isMemoryUsable(void* address, uint64 size)
@@ -133,40 +89,17 @@ BOOL memmap_isMemoryUsable(void* address, uint64 size)
     int index1 = mm_findEntry((void*)address);
     int index2 = mm_findEntry((void*)(base + size));
 
-    if (index1 == index2) {
-        return memmap.entries[index1].type == 1 && memmap.entries[index1].base >= base &&
-               memmap.entries[index1].base + memmap.entries[index1].size >= base + size;
+    if (index1 == memmap.amount || index2 == memmap.amount || index1 != index2) {
+        return FALSE;
     }
 
-    if (memmap.entries[index1].type == 1 && memmap.entries[index1].base >= base &&
-        memmap.entries[index1].base + memmap.entries[index1].size > base &&
-        memmap.entries[index2].type == 1 && memmap.entries[index2].base < base + size &&
-        memmap.entries[index2].base + memmap.entries[index2].size >= base + size) {
-        // Sum everything in-between to see if it fits
-        maxSize = (memmap.entries[index1].base + memmap.entries[index1].size) - base;
-        if (maxSize < size) {
-            for (; index1 <= index2; ++index1) {
-                if (memmap.entries[index1].type != 1) {
-                    break;
-                }
-                size = memmap.entries[index1].size;
-                if (maxSize >= size) {
-                    size = 0;
-                    break;
-                }
-                size -= maxSize;
-            }
-        } else {
-            size = 0;
-        }
-    }
-
-    return size == 0;
+    return memmap.entries[index1].type == 1 && memmap.entries[index1].base <= base &&
+           memmap.entries[index1].base + memmap.entries[index1].size >= base + size;
 }
 
 void memmap_reclaimACPI(void)
 {
-    int i;
+    unsigned i;
     for (i = 0; i < memmap.amount; ++i) {
         if (memmap.entries[i].type == 3) {
             memmap.entries[i].type = 1;
@@ -176,7 +109,7 @@ void memmap_reclaimACPI(void)
 
 void memmap_getMemorySizes(uint64* usable, uint64* reserved, uint64* acpi, uint64* nvs, uint64* bad)
 {
-    int i;
+    unsigned i;
 
     if (usable != NULL) {
         *usable = 0;

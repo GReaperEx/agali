@@ -2,6 +2,7 @@
 #include "idt.h"
 #include "textui.h"
 #include "kstring.h"
+#include "paging.h"
 
 typedef struct {
     uint64 RAX;
@@ -12,6 +13,14 @@ typedef struct {
     uint64 RBP;
     uint64 RSI;
     uint64 RDI;
+    uint64 R8;
+    uint64 R9;
+    uint64 R10;
+    uint64 R11;
+    uint64 R12;
+    uint64 R13;
+    uint64 R14;
+    uint64 R15;
 
     uint64 RIP;
     uint64 CS;
@@ -27,6 +36,14 @@ typedef struct {
     uint64 RBP;
     uint64 RSI;
     uint64 RDI;
+    uint64 R8;
+    uint64 R9;
+    uint64 R10;
+    uint64 R11;
+    uint64 R12;
+    uint64 R13;
+    uint64 R14;
+    uint64 R15;
 
     uint64 errorCode;
 
@@ -370,6 +387,22 @@ static void dumpRegisters(StackState* state)
     textui_puts(int2str(state->RSI, 16, buffer, sizeof(buffer)));
     textui_puts(" RDI=");
     textui_puts(int2str(state->RDI, 16, buffer, sizeof(buffer)));
+    textui_puts("\n\tR8=");
+    textui_puts(int2str(state->R8, 16, buffer, sizeof(buffer)));
+    textui_puts(" R9=");
+    textui_puts(int2str(state->R9, 16, buffer, sizeof(buffer)));
+    textui_puts(" R10=");
+    textui_puts(int2str(state->R10, 16, buffer, sizeof(buffer)));
+    textui_puts(" R11=");
+    textui_puts(int2str(state->R11, 16, buffer, sizeof(buffer)));
+    textui_puts("\n\tR12=");
+    textui_puts(int2str(state->R12, 16, buffer, sizeof(buffer)));
+    textui_puts(" R13=");
+    textui_puts(int2str(state->R13, 16, buffer, sizeof(buffer)));
+    textui_puts(" R14=");
+    textui_puts(int2str(state->R14, 16, buffer, sizeof(buffer)));
+    textui_puts(" R15=");
+    textui_puts(int2str(state->R15, 16, buffer, sizeof(buffer)));
     textui_putchar('\n');
 }
 

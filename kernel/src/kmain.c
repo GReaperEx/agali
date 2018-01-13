@@ -50,8 +50,6 @@ void kmain(void)
     DEBUG_PRINT("Reinitializing paging.\n");
     paging_init();
 
-    *((uint64*)0x00000000C0000321) = 123;
-
 	for (;;) {
 	    __asm__ __volatile__("hlt \n\t");
 	}

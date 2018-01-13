@@ -2,7 +2,7 @@ global kfront
 extern kmain
 
 %macro PUSH_ALL 0
-    SUB RSP, 64
+    SUB RSP, 128
     MOV [RSP + 0], RAX
     MOV [RSP + 8], RCX
     MOV [RSP + 16], RDX
@@ -12,6 +12,14 @@ extern kmain
     MOV [RSP + 40], RBP
     MOV [RSP + 48], RSI
     MOV [RSP + 56], RDI
+    MOV [RSP + 64 + 0], R8
+    MOV [RSP + 64 + 8], R9
+    MOV [RSP + 64 + 16], R10
+    MOV [RSP + 64 + 24], R11
+    MOV [RSP + 64 + 32], R12
+    MOV [RSP + 64 + 40], R13
+    MOV [RSP + 64 + 48], R14
+    MOV [RSP + 64 + 56], R15
 %endmacro
 
 %macro POP_ALL 0
@@ -22,7 +30,15 @@ extern kmain
     MOV RBP, [RSP + 40]
     MOV RSI, [RSP + 48]
     MOV RDI, [RSP + 56]
-    ADD RSP, 64
+    MOV R8,  [RSP + 64 + 0]
+    MOV R9,  [RSP + 64 + 8]
+    MOV R10, [RSP + 64 + 16]
+    MOV R11, [RSP + 64 + 24]
+    MOV R12, [RSP + 64 + 32]
+    MOV R13, [RSP + 64 + 40]
+    MOV R14, [RSP + 64 + 48]
+    MOV R15, [RSP + 64 + 56]
+    ADD RSP, 128
 %endmacro
 
 kfront:
