@@ -1,5 +1,6 @@
 #include "exceptions.h"
 #include "descriptors.h"
+#include "registers.h"
 #include "textui.h"
 #include "kstring.h"
 #include "paging.h"
@@ -25,7 +26,7 @@ typedef struct {
     uint64 RIP;
     uint64 CS;
 
-    uint64 flags;
+    RFLAGS flags;
 
     uint64 RSP;
     uint64 SS;
@@ -54,7 +55,7 @@ typedef struct {
     uint64 RIP;
     uint64 CS;
 
-    uint64 flags;
+    RFLAGS flags;
 
     uint64 RSP;
     uint64 SS;

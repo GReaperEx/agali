@@ -1,5 +1,6 @@
 cdrom.sys : cdrom.asm
-	nasm -o $@ $<
+	@echo Compiling: $<
+	@nasm -o $@ $<
 
 .PHONY : clean
 clean :
