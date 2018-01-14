@@ -233,7 +233,6 @@ void paging_unmap(void* vAddr, BOOL freePhysical)
 void* paging_alloc(uint64 amount, BOOL isSuper, BOOL isWritable)
 {
     uint64 lowBound, highBound;
-    BOOL didRep = FALSE;
 
     if (amount == 0) {
         return NULL;
@@ -280,11 +279,7 @@ void* paging_alloc(uint64 amount, BOOL isSuper, BOOL isWritable)
             userCounter = highBound;
 
             if (userCounter >= 0x8000000000) {
-                userCounter = 0x101000;
-                if (didRep) {
-                    break;
-                }
-                didRep = TRUE;
+                break;
             }
         }
     }
@@ -365,6 +360,28 @@ void paging_free(void* oldPtr, uint64 oldAmount)
 
         for (i = 0; i < oldAmount; ++i) {
             paging_unmap((void*)((intptr)oldPtr + i*4096), TRUE);
+        }
+    }
+}
+
+void paging_enableCaching(void* vAddr)
+{
+    if (_getPML4entry(vAddr)->P && _getPDTentry(vAddr)->P && _getPDentry(vAddr)->P) {
+        PageEntry* pe = _getPTentry(vAddr);
+        if (pe->P) {
+            pe->PCD = pe->PWT = pe->PAT = 0;
+            invlpg(vAddr);
+        }
+    }
+}
+
+void paging_disableCaching(void* vAddr)
+{
+    if (_getPML4entry(vAddr)->P && _getPDTentry(vAddr)->P && _getPDentry(vAddr)->P) {
+        PageEntry* pe = _getPTentry(vAddr);
+        if (pe->P) {
+            pe->PCD = pe->PWT = pe->PAT = 1;
+            invlpg(vAddr);
         }
     }
 }

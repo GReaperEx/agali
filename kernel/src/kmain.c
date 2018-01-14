@@ -2,10 +2,10 @@
 #include "memmap.h"
 #include "kstring.h"
 #include "sse.h"
-#include "gdt.h"
 #include "paging.h"
-#include "idt.h"
 #include "exceptions.h"
+
+#include "descriptors.h"
 
 void kmain(void)
 {

@@ -50,7 +50,8 @@ void paging_free(void* oldPtr, uint64 oldAmount);
 void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable);
 void paging_unmap(void* vAddr, BOOL freePhysical);
 
-void paging_expandStack(void);
+void paging_enableCaching(void* vAddr);
+void paging_disableCaching(void* vAddr);
 
 static inline void invlpg(void* address)
 {

@@ -1,5 +1,5 @@
 #include "exceptions.h"
-#include "idt.h"
+#include "descriptors.h"
 #include "textui.h"
 #include "kstring.h"
 #include "paging.h"
@@ -75,26 +75,26 @@ void ISR30(void);
 
 void exceptions_init(void)
 {
-    idt_enable(0, ISR0, GATE_INT, TRUE);
-    idt_enable(1, ISR1, GATE_INT, TRUE);
-    idt_enable(2, ISR2, GATE_INT, TRUE);
-    idt_enable(3, ISR3, GATE_INT, TRUE);
-    idt_enable(4, ISR4, GATE_INT, TRUE);
-    idt_enable(5, ISR5, GATE_INT, TRUE);
-    idt_enable(6, ISR6, GATE_INT, TRUE);
-    idt_enable(7, ISR7, GATE_INT, TRUE);
-    idt_enable(8, ISR8, GATE_INT, TRUE);
-    idt_enable(10, ISR10, GATE_INT, TRUE);
-    idt_enable(11, ISR11, GATE_INT, TRUE);
-    idt_enable(12, ISR12, GATE_INT, TRUE);
-    idt_enable(13, ISR13, GATE_INT, TRUE);
-    idt_enable(14, ISR14, GATE_INT, TRUE);
-    idt_enable(16, ISR16, GATE_INT, TRUE);
-    idt_enable(17, ISR17, GATE_INT, TRUE);
-    idt_enable(18, ISR18, GATE_INT, TRUE);
-    idt_enable(18, ISR19, GATE_INT, TRUE);
-    idt_enable(20, ISR20, GATE_INT, TRUE);
-    idt_enable(30, ISR30, GATE_INT, TRUE);
+    idt_enable(0, (intptr)ISR0, 0x08, GATE_INT, TRUE);
+    idt_enable(1, (intptr)ISR1, 0x08, GATE_INT, TRUE);
+    idt_enable(2, (intptr)ISR2, 0x08, GATE_INT, TRUE);
+    idt_enable(3, (intptr)ISR3, 0x08, GATE_INT, TRUE);
+    idt_enable(4, (intptr)ISR4, 0x08, GATE_INT, TRUE);
+    idt_enable(5, (intptr)ISR5, 0x08, GATE_INT, TRUE);
+    idt_enable(6, (intptr)ISR6, 0x08, GATE_INT, TRUE);
+    idt_enable(7, (intptr)ISR7, 0x08, GATE_INT, TRUE);
+    idt_enable(8, (intptr)ISR8, 0x08, GATE_INT, TRUE);
+    idt_enable(10, (intptr)ISR10, 0x08, GATE_INT, TRUE);
+    idt_enable(11, (intptr)ISR11, 0x08, GATE_INT, TRUE);
+    idt_enable(12, (intptr)ISR12, 0x08, GATE_INT, TRUE);
+    idt_enable(13, (intptr)ISR13, 0x08, GATE_INT, TRUE);
+    idt_enable(14, (intptr)ISR14, 0x08, GATE_INT, TRUE);
+    idt_enable(16, (intptr)ISR16, 0x08, GATE_INT, TRUE);
+    idt_enable(17, (intptr)ISR17, 0x08, GATE_INT, TRUE);
+    idt_enable(18, (intptr)ISR18, 0x08, GATE_INT, TRUE);
+    idt_enable(18, (intptr)ISR19, 0x08, GATE_INT, TRUE);
+    idt_enable(20, (intptr)ISR20, 0x08, GATE_INT, TRUE);
+    idt_enable(30, (intptr)ISR30, 0x08, GATE_INT, TRUE);
 }
 
 static void dumpRegisters(StackState* state);
@@ -210,7 +210,7 @@ void doubleFault(StackState* state)
     _hang();
 }
 
-void invalidTSS(StackState* state)
+void invalidTSS(StackStateEx* state)
 {
     char buffer[32];
 
@@ -219,11 +219,11 @@ void invalidTSS(StackState* state)
     textui_puts(int2str(state->RIP, 16, buffer, sizeof(buffer)));
     textui_putchar('\n');
 
-    dumpRegisters(state);
+    dumpRegisters((StackState*)state);
     _hang();
 }
 
-void segNotPresent(StackState* state)
+void segNotPresent(StackStateEx* state)
 {
     char buffer[32];
 
@@ -232,11 +232,11 @@ void segNotPresent(StackState* state)
     textui_puts(int2str(state->RIP, 16, buffer, sizeof(buffer)));
     textui_putchar('\n');
 
-    dumpRegisters(state);
+    dumpRegisters((StackState*)state);
     _hang();
 }
 
-void stackSegFault(StackState* state)
+void stackSegFault(StackStateEx* state)
 {
     char buffer[32];
 
@@ -245,11 +245,11 @@ void stackSegFault(StackState* state)
     textui_puts(int2str(state->RIP, 16, buffer, sizeof(buffer)));
     textui_putchar('\n');
 
-    dumpRegisters(state);
+    dumpRegisters((StackState*)state);
     _hang();
 }
 
-void generalProtection(StackState* state)
+void generalProtection(StackStateEx* state)
 {
     char buffer[32];
 
@@ -258,7 +258,7 @@ void generalProtection(StackState* state)
     textui_puts(int2str(state->RIP, 16, buffer, sizeof(buffer)));
     textui_putchar('\n');
 
-    dumpRegisters(state);
+    dumpRegisters((StackState*)state);
     _hang();
 }
 
@@ -284,7 +284,7 @@ void pageFault(StackStateEx* state)
     textui_puts((state->errorCode & 0x10) ? "Yes" : "No");
     textui_putchar('\n');
 
-    dumpRegisters(state);
+    dumpRegisters((StackState*)state);
     _hang();
 }
 

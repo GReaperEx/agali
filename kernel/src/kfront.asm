@@ -153,6 +153,7 @@ ISR10:
     CALL invalidTSS
 
     POP_ALL
+    ADD RSP, 8
     IRETQ
 
 global ISR11
@@ -164,6 +165,7 @@ ISR11:
     CALL segNotPresent
 
     POP_ALL
+    ADD RSP, 8
     IRETQ
 
 global ISR12
@@ -175,6 +177,7 @@ ISR12:
     CALL stackSegFault
 
     POP_ALL
+    ADD RSP, 8
     IRETQ
 
 global ISR13
@@ -186,6 +189,7 @@ ISR13:
     CALL generalProtection
 
     POP_ALL
+    ADD RSP, 8
     IRETQ
 
 global ISR14
