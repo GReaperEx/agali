@@ -10,7 +10,7 @@ $(shell mkdir -p $(OBJD) >/dev/null)
 SRCS := $(wildcard $(SRCD)/*.c) $(wildcard $(SRCD)/*.asm)
 OBJS := $(patsubst $(SRCD)/%.asm,$(OBJD)/%.o,$(patsubst $(SRCD)/%.c,$(OBJD)/%.o,$(SRCS)))
 
-CFLAGS = -Wall -Wextra -nostdlib -fno-builtin -nostartfiles -nodefaultlibs -O2 -mno-ms-bitfields -m64 -mcmodel=medium -fPIC
+CFLAGS = -Wall -Wextra -ffreestanding -mno-red-zone -nostdlib -nostartfiles -nodefaultlibs -O2 -mno-ms-bitfields -m64 -mcmodel=medium -fPIC
 
 ifeq ($(ENV), windows)
   LD = i686-elf-ld

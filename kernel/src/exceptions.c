@@ -9,7 +9,7 @@ typedef struct {
     uint64 RCX;
     uint64 RDX;
     uint64 RBX;
-    uint64 RSP;
+    uint64 __useless;
     uint64 RBP;
     uint64 RSI;
     uint64 RDI;
@@ -24,7 +24,11 @@ typedef struct {
 
     uint64 RIP;
     uint64 CS;
+
     uint64 flags;
+
+    uint64 RSP;
+    uint64 SS;
 } StackState;
 
 typedef struct {
@@ -32,7 +36,7 @@ typedef struct {
     uint64 RCX;
     uint64 RDX;
     uint64 RBX;
-    uint64 RSP;
+    uint64 __useless;
     uint64 RBP;
     uint64 RSI;
     uint64 RDI;
@@ -49,7 +53,11 @@ typedef struct {
 
     uint64 RIP;
     uint64 CS;
+
     uint64 flags;
+
+    uint64 RSP;
+    uint64 SS;
 } StackStateEx;
 
 void ISR0(void);

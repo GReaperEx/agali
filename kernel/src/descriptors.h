@@ -8,18 +8,19 @@ typedef struct __attribute__((packed)) {
     uint16 base_low;
 
     struct {
-        uint8 Ac    : 1;
-        uint8 RW    : 1; // Is segment Read/Write
-        uint8 DC    : 1; // Direction/Conforming bit
-        uint8 Ex    : 1;
-        uint8 _res  : 1; // 1
-        uint8 Privl : 2;
-        uint8 P     : 1;
-    } access;
+        uint16 base_mid : 8;
+        uint16 Ac       : 1;
+        uint16 RW       : 1; // Is segment Read/Write
+        uint16 DC       : 1; // Direction/Conforming bit
+        uint16 Ex       : 1;
+        uint16 _res1    : 1; // 1
+        uint16 Privl    : 2;
+        uint16 P        : 1;
+    };
 
     struct {
         uint8 limit_high : 4;
-        uint8 _res       : 1; // 0
+        uint8 _res2      : 1; // 0
         uint8 L          : 1; // Specifies long mode segment
         uint8 Sz         : 1;
         uint8 Gr         : 1; // 1
@@ -63,7 +64,7 @@ static inline gdt_descr makeGDTdescr(BOOL isCode, BOOL isSuper)
     gdt_descr newDescr = {
         0x0,
         0x0,
-        { 0, 1, 0, isCode, 1, (isSuper ? 0 : 3), 1 },
+        { 0x0, 0, 1, 0, isCode, 1, (isSuper ? 0 : 3), 1 },
         { 0x0, 0, 1, 0, 1 },
         0x0
     };

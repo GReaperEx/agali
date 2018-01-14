@@ -7,8 +7,6 @@ extern kmain
     MOV [RSP + 8], RCX
     MOV [RSP + 16], RDX
     MOV [RSP + 24], RBX
-    LEA RAX, [RSP + 64]
-    MOV [RSP + 32], RAX
     MOV [RSP + 40], RBP
     MOV [RSP + 48], RSI
     MOV [RSP + 56], RDI
