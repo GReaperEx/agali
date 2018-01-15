@@ -6,6 +6,7 @@
 #include "exceptions.h"
 
 #include "descriptors.h"
+#include "acpi.h"
 
 void kmain(void)
 {
@@ -50,7 +51,14 @@ void kmain(void)
     DEBUG_PRINT("Reinitializing paging.\n");
     paging_init();
 
-    volatile int a = 123/0;
+    if (!acpi_init()) {
+        textui_puts("This system doesn't appear to support ACPI!\n");
+    } else {
+        DEBUG_PRINT("Detected ACPI Root System Description Pointer.\n");
+        if (acpi_findHeader("APIC")) {
+            textui_puts("Found the ACPI APIC table.\n");
+        }
+    }
 
 	for (;;) {
 	    __asm__ __volatile__("hlt \n\t");
