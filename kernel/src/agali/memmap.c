@@ -1,6 +1,5 @@
 #include <agali/memmap.h>
-#include <agali/textui.h>
-#include <string.h>
+#include <stdio.h>
 
 #define MAX_MEMMAP_SIZE 64
 
@@ -22,9 +21,6 @@ int mm_findEntry(void* address);
 void memmap_init(void)
 {
     uint32 i;
-#ifndef NDEBUG
-    char buffer[32];
-#endif // NDEBUG
 
     memmapEntry* mmBIOS = (memmapEntry*)0x508;
     uint32 mmBIOSsize = *((uint32*)0x500);
@@ -39,18 +35,8 @@ void memmap_init(void)
             memmap.entries[memmap.amount++] = mmBIOS[i];
         }
 #ifndef NDEBUG
-        textui_puts("\tBase: ");
-        textui_puts(int2str(mmBIOS[i].base, 16, buffer, sizeof(buffer)));
-        textui_putchar(' ');
-        textui_puts("Size: ");
-        textui_puts(int2str(mmBIOS[i].size, 16, buffer, sizeof(buffer)));
-        textui_putchar(' ');
-        textui_puts("Type: ");
-        textui_puts(int2str(mmBIOS[i].type, 10, buffer, sizeof(buffer)));
-        textui_putchar(' ');
-        textui_puts("ExType: ");
-        textui_puts(int2str(mmBIOS[i].extBitfield, 2, buffer, sizeof(buffer)));
-        textui_putchar('\n');
+        printf("\tBase: %-10lX Size: %-10lX Type: %2d ExType: %2d\n",
+               mmBIOS[i].base, mmBIOS[i].size, mmBIOS[i].type, mmBIOS[i].extBitfield);
 #endif // NDEBUG
     }
 

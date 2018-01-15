@@ -94,23 +94,28 @@ void strncat(char* dst, const char* src, size_t num)
     }
 }
 
-size_t str2int(const char* src, int base)
+size_t str2int(const char* src, unsigned long* numPtr, int base)
 {
-    int c;
+    int c, counter = 0;
     size_t result = 0;
 
     while ((c = toupper(*src++))) {
-        result *= base;
         if (isdigit(c) && (c - '0') < base) {
+            result *= base;
             result += c - '0';
         } else if (isalpha(c) && (c - 'A' + 10) < base) {
+            result *= base;
             result += c - 'A' + 10;
         } else {
             break;
         }
+        ++counter;
     }
 
-    return result;
+    if (numPtr) {
+        *numPtr = result;
+    }
+    return counter;
 }
 
 char* int2str(size_t num, int base, char* buffer, int bufferSize)
