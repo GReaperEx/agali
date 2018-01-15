@@ -1,6 +1,5 @@
-#include "textui.h"
-
-#include "portio.h"
+#include <agali/textui.h>
+#include <agali/portio.h>
 
 static struct {
     uint16* videoBase;

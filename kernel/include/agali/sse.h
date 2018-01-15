@@ -1,7 +1,7 @@
 #ifndef SSE_H
 #define SSE_H
 
-#include "ktypes.h"
+#include <agali/ktypes.h>
 
 void sse_enable(void);
 BOOL sse_isEnabled(void);

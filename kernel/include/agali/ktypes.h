@@ -1,6 +1,9 @@
 #ifndef KTYPES_H
 #define KTYPES_H
 
+#include <ctype.h>
+#include <stddef.h>
+
 #ifndef NDEBUG
 #define DEBUG_PRINT(s) textui_puts(s)
 #else
@@ -24,21 +27,5 @@ typedef uint64 intptr;
 typedef uint8 BOOL;
 #define FALSE 0
 #define TRUE 1
-
-#define NULL ((void*)0)
-
-int isalnum(int c);
-int isalpha(int c);
-int iscntrl(int c);
-int isdigit(int c);
-int islower(int c);
-int isprint(int c);
-int ispunct(int c);
-int isspace(int c);
-int isupper(int c);
-int isxdigit(int c);
-
-int toupper(int c);
-int tolower(int c);
 
 #endif // KTYPES_H

@@ -1,6 +1,6 @@
-#include "memmap.h"
-#include "textui.h"
-#include "kstring.h"
+#include <agali/memmap.h>
+#include <agali/textui.h>
+#include <string.h>
 
 #define MAX_MEMMAP_SIZE 64
 

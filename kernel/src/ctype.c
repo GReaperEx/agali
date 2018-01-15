@@ -1,4 +1,6 @@
-#include "ktypes.h"
+#include <ctype.h>
+
+#include <agali/ktypes.h>
 
 #define IS_ALPHA  1
 #define IS_DIGIT  2

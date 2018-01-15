@@ -1,5 +1,5 @@
-#include "kstring.h"
-#include "sse.h"
+#include <string.h>
+#include <agali/sse.h>
 
 void strcpy(char* dst, const char* src)
 {
@@ -33,7 +33,7 @@ void strcat(char* dst, const char* src)
     }
 }
 
-uint64 strlen(const char* src)
+size_t strlen(const char* src)
 {
     const char* origin = src;
 
@@ -41,10 +41,10 @@ uint64 strlen(const char* src)
         continue;
     }
 
-    return (uint64)(src - origin) - 1UL;
+    return (size_t)(src - origin) - 1UL;
 }
 
-void strncpy(char* dst, const char* src, uint64 num)
+void strncpy(char* dst, const char* src, size_t num)
 {
     int c;
 
@@ -58,7 +58,7 @@ void strncpy(char* dst, const char* src, uint64 num)
     }
 }
 
-int strncmp(const char* src1, const char* src2, uint64 num)
+int strncmp(const char* src1, const char* src2, size_t num)
 {
     int c1, c2;
 
@@ -78,7 +78,7 @@ int strncmp(const char* src1, const char* src2, uint64 num)
     return c1 - c2;
 }
 
-void strncat(char* dst, const char* src, uint64 num)
+void strncat(char* dst, const char* src, size_t num)
 {
     if (num != 0) {
         while (*dst++) {
@@ -94,10 +94,10 @@ void strncat(char* dst, const char* src, uint64 num)
     }
 }
 
-uint64 str2int(const char* src, int base)
+size_t str2int(const char* src, int base)
 {
     int c;
-    uint64 result = 0;
+    size_t result = 0;
 
     while ((c = toupper(*src++))) {
         result *= base;
@@ -113,7 +113,7 @@ uint64 str2int(const char* src, int base)
     return result;
 }
 
-char* int2str(uint64 num, int base, char* buffer, int bufferSize)
+char* int2str(size_t num, int base, char* buffer, int bufferSize)
 {
     static const char digits[] = "0123456789"
                                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -143,9 +143,9 @@ char* int2str(uint64 num, int base, char* buffer, int bufferSize)
     return buffer;
 }
 
-void memset(void* dst, int byteValue, uint64 size)
+void memset(void* dst, int byteValue, size_t size)
 {
-    uint64 i = (16 - ((intptr)dst & 15)) & 15;
+    size_t i = (16 - ((intptr)dst & 15)) & 15;
     uint8* _dst = dst;
     sse_vec64 value;
 
@@ -168,9 +168,9 @@ void memset(void* dst, int byteValue, uint64 size)
     }
 }
 
-void memcpy(void* dst, const void* src, uint64 size)
+void memcpy(void* dst, const void* src, size_t size)
 {
-    uint64 i;
+    size_t i;
     uint8* _dst = dst;
     const uint8* _src = src;
 
@@ -193,7 +193,7 @@ void memcpy(void* dst, const void* src, uint64 size)
             --size;
         }
         while (size >= 8) {
-            *((uint64*)_dst) = *((uint64*)_src);
+            *((size_t*)_dst) = *((size_t*)_src);
             _dst += 8;
             _src += 8;
             size -= 8;
@@ -229,9 +229,9 @@ void memcpy(void* dst, const void* src, uint64 size)
     }
 }
 
-void memcpy_back(void* dst, const void* src, uint64 size)
+void memcpy_back(void* dst, const void* src, size_t size)
 {
-    uint64 i;
+    size_t i;
     uint8* _dst = (uint8*)dst + size - 1;
     const uint8* _src = (const uint8*)src + size - 1;
 
@@ -254,7 +254,7 @@ void memcpy_back(void* dst, const void* src, uint64 size)
             --size;
         }
         while (size >= 8) {
-            *((uint64*)_dst) = *((uint64*)_src);
+            *((size_t*)_dst) = *((size_t*)_src);
             _dst -= 8;
             _src -= 8;
             size -= 8;
@@ -290,11 +290,25 @@ void memcpy_back(void* dst, const void* src, uint64 size)
     }
 }
 
-void memmove(void* dst, const void* src, uint64 size)
+void memmove(void* dst, const void* src, size_t size)
 {
     if ((intptr)dst <= (intptr)src || (intptr)src + size <= (intptr)dst) {
         memcpy(dst, src, size);
     } else {
         memcpy_back(dst, src, size);
     }
+}
+
+int memcmp(const void* src1, const void* src2, size_t size)
+{
+    size_t i;
+    const uint8* _src1 = src1;
+    const uint8* _src2 = src2;
+
+    for (i = 0; i < size; ++i) {
+        if (_src1[i] != _src2[i]) {
+            return _src1[i] - _src2[i];
+        }
+    }
+    return 0;
 }

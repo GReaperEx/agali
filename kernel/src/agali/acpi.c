@@ -1,6 +1,6 @@
-#include "acpi.h"
-#include "kstring.h"
-#include "paging.h"
+#include <agali/acpi.h>
+#include <agali/paging.h>
+#include <string.h>
 
 typedef struct __attribute__((packed)) {
     uint8 signature[8]; // "RSD PTR "
@@ -60,7 +60,7 @@ BOOL acpi_init(void)
     return FALSE;
 }
 
-void* acpi_findHeader(const char* headerSig)
+void* acpi_findTable(const char* headerSig)
 {
     SDTheader* root;
     volatile SDTheader* current = NULL;

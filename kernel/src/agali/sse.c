@@ -1,4 +1,4 @@
-#include "sse.h"
+#include <agali/sse.h>
 
 static BOOL sse_enabled;
 

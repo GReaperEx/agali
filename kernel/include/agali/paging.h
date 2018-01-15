@@ -1,7 +1,7 @@
 #ifndef PAGING_H
 #define PAGING_H
 
-#include "ktypes.h"
+#include <agali/ktypes.h>
 
 typedef union {
     struct {

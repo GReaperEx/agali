@@ -1,9 +1,9 @@
-#include "exceptions.h"
-#include "descriptors.h"
-#include "registers.h"
-#include "textui.h"
-#include "kstring.h"
-#include "paging.h"
+#include <agali/exceptions.h>
+#include <agali/descriptors.h>
+#include <agali/registers.h>
+#include <agali/textui.h>
+#include <agali/paging.h>
+#include <string.h>
 
 typedef struct {
     uint64 RAX;

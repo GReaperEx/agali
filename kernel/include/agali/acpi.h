@@ -39,6 +39,6 @@ typedef struct __attribute__((packed)) {
 
 BOOL acpi_init(void);
 
-void* acpi_findHeader(const char* headerSig);
+void* acpi_findTable(const char* headerSig);
 
 #endif // ACPI_H

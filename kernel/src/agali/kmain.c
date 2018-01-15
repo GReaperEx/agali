@@ -1,12 +1,13 @@
-#include "textui.h"
-#include "memmap.h"
-#include "kstring.h"
-#include "sse.h"
-#include "paging.h"
-#include "exceptions.h"
+#include <agali/textui.h>
+#include <agali/memmap.h>
+#include <agali/sse.h>
+#include <agali/paging.h>
+#include <agali/exceptions.h>
+#include <agali/descriptors.h>
+#include <agali/acpi.h>
 
-#include "descriptors.h"
-#include "acpi.h"
+#include <stdio.h>
+#include <string.h>
 
 void kmain(void)
 {
@@ -55,7 +56,7 @@ void kmain(void)
         textui_puts("This system doesn't appear to support ACPI!\n");
     } else {
         DEBUG_PRINT("Detected ACPI Root System Description Pointer.\n");
-        if (acpi_findHeader("APIC")) {
+        if (acpi_findTable("APIC")) {
             textui_puts("Found the ACPI APIC table.\n");
         }
     }

@@ -1,4 +1,4 @@
-#include "descriptors.h"
+#include <agali/descriptors.h>
 
 static idt_descr IDT[256];
 static gdt_descr GDT[5];

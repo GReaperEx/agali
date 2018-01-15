@@ -1,7 +1,7 @@
 #ifndef TEXTUI_H
 #define TEXTUI_H
 
-#include "ktypes.h"
+#include <agali/ktypes.h>
 
 void textui_init(void);
 

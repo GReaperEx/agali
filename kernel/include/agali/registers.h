@@ -1,7 +1,7 @@
 #ifndef REGISTERS_H
 #define REGISTERS_H
 
-#include "ktypes.h"
+#include <agali/ktypes.h>
 
 typedef union {
     struct {

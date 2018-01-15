@@ -1,7 +1,7 @@
 #ifndef PORTIO_H
 #define PORTIO_H
 
-#include "ktypes.h"
+#include <agali/ktypes.h>
 
 static inline uint8 inb(uint16 port)
 {
