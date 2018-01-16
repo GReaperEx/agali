@@ -10,8 +10,8 @@ void sse_enable(void)
         "mov %%cr0, %0 \n\t"
     : "=r" (cr)
     );
-    cr &= ~(1 << 2);
-    cr |= (1 << 2);
+    cr &= ~(1UL << 2);
+    cr |= (1 << 1);
     __asm__ __volatile__(
         "mov %0, %%cr0 \n\t"
     :: "r" (cr)

@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 #define EOF -1
-#define putchar(c) textui_putchar(c)
+#define putchar(c) (textui_putchar(c), (c))
 
 typedef long fpos_t;
 

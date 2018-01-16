@@ -1,6 +1,5 @@
-#include <agali/ktypes.h>
-
 #include <string.h>
+#include <agali/sse.h>
 
 void strcpy(char* dst, const char* src)
 {
@@ -153,23 +152,24 @@ void memset(void* dst, int byteValue, size_t size)
 {
     size_t i = (16 - ((intptr)dst & 15)) & 15;
     uint8* _dst = dst;
-    uint64 value;
+    sse_vec64 value;
 
-    value = ((uint64)(byteValue & 0xFF) << 32) | (byteValue & 0xFF);
+    value[0] = value[1] = (uint8)byteValue;
     value |= (value << 8);
     value |= (value << 16);
+    value |= (value << 32);
 
     while (i-- && size) {
-        *_dst++ = value;
+        *_dst++ = value[0];
         --size;
     }
     while (size >= 16) {
-        *((uint64*)_dst) = value;
+        *((sse_vec64*)_dst) = value;
         _dst += 16;
         size -= 16;
     }
     while (size--) {
-        *_dst++ = value;
+        *_dst++ = value[0];
     }
 }
 
@@ -179,7 +179,19 @@ void memcpy(void* dst, const void* src, size_t size)
     uint8* _dst = dst;
     const uint8* _src = src;
 
-    if (((intptr)_dst & 7) == ((intptr)_src & 7)) {
+    if (((intptr)_dst & 15) == ((intptr)_src & 15)) {
+        i = (16 - ((intptr)_dst & 15)) & 15;
+        while (i-- && size) {
+            *_dst++ = *_src++;
+            --size;
+        }
+        while (size >= 16) {
+            *((sse_vec64*)_dst) = *((sse_vec64*)_src);
+            _dst += 16;
+            _src += 16;
+            size -= 16;
+        }
+    } else if (((intptr)_dst & 7) == ((intptr)_src & 7)) {
         i = (8 - ((intptr)_dst & 7)) & 7;
         while (i-- && size) {
             *_dst++ = *_src++;
@@ -228,7 +240,19 @@ void memcpy_back(void* dst, const void* src, size_t size)
     uint8* _dst = (uint8*)dst + size - 1;
     const uint8* _src = (const uint8*)src + size - 1;
 
-    if (((intptr)_dst & 7) == ((intptr)_src & 7)) {
+    if (((intptr)_dst & 15) == ((intptr)_src & 15)) {
+        i = ((intptr)_dst & 15);
+        while (i-- && size) {
+            *_dst-- = *_src--;
+            --size;
+        }
+        while (size >= 16) {
+            *((sse_vec64*)_dst) = *((sse_vec64*)_src);
+            _dst -= 16;
+            _src -= 16;
+            size -= 16;
+        }
+    } else if (((intptr)_dst & 7) == ((intptr)_src & 7)) {
         i = ((intptr)_dst & 7);
         while (i-- && size) {
             *_dst-- = *_src--;
