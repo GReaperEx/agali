@@ -270,9 +270,9 @@ ISR30:
 
 ; >>> Exception end here <<<
 
-global ISR32
+global ISR33
 extern kbrd_handler
-ISR32:
+ISR33:
     PUSH_ALL
     CALL kbrd_handler
     POP_ALL
