@@ -8,6 +8,7 @@ int puts(const char* str)
 {
     textui_puts(str);
     putchar('\n');
+    return 0;
 }
 
 int printf(const char* format, ...)
@@ -241,4 +242,33 @@ int printf(const char* format, ...)
     va_end(args);
 
     return count;
+}
+
+int getchar(void)
+{
+    int c;
+
+    textui_showCursor(TRUE);
+    c = kbrd_getchar();
+    textui_showCursor(FALSE);
+
+    textui_putchar(c);
+    return c;
+}
+
+char* gets(char* dst, int n)
+{
+    int c, i = 0;
+
+    textui_showCursor(TRUE);
+    while (i < n - 1) {
+        dst[i++] = (c = kbrd_getchar());
+        if (c == '\n') {
+            break;
+        }
+    }
+    dst[i] = '\0';
+    textui_showCursor(FALSE);
+
+    return dst;
 }

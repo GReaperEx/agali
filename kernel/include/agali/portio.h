@@ -66,4 +66,9 @@ static inline void outd(uint16 port, uint8 value)
     );
 }
 
+static inline void io_wait(void)
+{
+    __asm__ __volatile__( "outb %%al, $0x80 \n\t" : : "a"(0) );
+}
+
 #endif // PORTIO_H

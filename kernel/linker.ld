@@ -7,23 +7,23 @@ SECTIONS
     
     .text BLOCK(4K) : ALIGN (4K)
     {
-        *(.text)
+        *(.text*)
     }
     
     .data BLOCK(4K) : ALIGN (4K)
     {
-        *(.data)
+        *(.data*)
         *(.rodata*)
-        *(.eh_frame)
-        *(.comment)
+        *(.eh_frame*)
+        *(.comment*)
         *(.got*)
     }
     
     .bss BLOCK(4K) : ALIGN (4K)
     {
-        *(COMMON)
-        *(.bss)
-        *(.sbss)
+        *(COMMON*)
+        *(.bss*)
+        *(.sbss*)
     }
 }
 

@@ -1,5 +1,6 @@
 #include <agali/memmap.h>
 #include <stdio.h>
+#include <string.h>
 
 #define MAX_MEMMAP_SIZE 64
 

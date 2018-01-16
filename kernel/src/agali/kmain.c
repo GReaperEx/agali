@@ -5,6 +5,8 @@
 #include <agali/exceptions.h>
 #include <agali/descriptors.h>
 #include <agali/acpi.h>
+#include <agali/pic.h>
+#include <agali/kbrd.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +16,7 @@ void kmain(void)
 #ifndef NDEBUG
     uint64 memSizes[5];
 #endif // NDEBUG
+    int i;
 
 	textui_init();
 	textui_setColor(0x7, 0x0);
@@ -42,13 +45,22 @@ void kmain(void)
     DEBUG_PRINT("Reinitializing paging.\n");
     paging_init();
 
-    if (!acpi_init()) {
-        textui_puts("This system doesn't appear to support ACPI!\n");
+    DEBUG_PRINT("Initializing the 8259-PIC\n");
+    pic_remap(32, 38);
+    for (i = 0; i < 16; ++i) {
+        pic_disableIRQ(i);
+    }
+
+    kbrd_init();
+    __asm__ __volatile__("sti");
+
+    if (acpi_init()) {
     } else {
-        DEBUG_PRINT("Detected ACPI Root System Description Pointer.\n");
-        if (acpi_findTable("APIC")) {
-            textui_puts("Found the ACPI APIC table.\n");
-        }
+        textui_puts("This system doesn't appear to support ACPI!\n");
+    }
+
+    for (;;) {
+        getchar();
     }
 
 	for (;;) {

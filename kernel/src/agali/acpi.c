@@ -22,6 +22,7 @@ static int checksum(RSDP* rspd)
     int len = rspd->length;
     uint8* rspdPtr = (uint8*)rspd;
 
+    len = (len > sizeof(RSDP) ? sizeof(RSDP) : len);
     for (i = 0; i < 20; ++i) {
         sum += rspdPtr[i];
         exSum += rspdPtr[i];

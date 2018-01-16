@@ -704,7 +704,7 @@ loader64:
 	JNE ELF_Fail
 	
 ; Load the format's .code, .data and .bss segments
-; Assuming all is inside a single segment
+; Assuming all is inside a single program header
 
 	MOV RSI, [0x100000 + 0x20]
 	ADD RSI, 0x100000
@@ -735,8 +735,16 @@ loader64:
 	MOV RSI, [0x100000 + 0x20]
 	ADD RSI, 0x100000
 	
-	MOV RDI, [RSI + 2*0x38 + 0x10]
-	MOV RCX, [RSI + 2*0x38 + 0x28]
+	MOV RDI, [RSI + 0x20]
+	MOV RCX, [RSI + 0x28]
+	ADD RDI, 4095
+	SHR RDI, 12
+	SHL RDI, 12
+	SUB RCX, RDI
+	ADD RCX, 4095
+	SHR RCX, 12
+	SHL RCX, 12
+	ADD RDI, [RSI + 0x10]
 
 	ADD RCX, 4095
 	SHR RCX, 12

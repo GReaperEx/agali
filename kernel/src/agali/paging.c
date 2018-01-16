@@ -1,6 +1,5 @@
 #include <agali/paging.h>
 #include <agali/memmap.h>
-#include <agali/textui.h>
 
 static PageTableEntry globalPML4T[512] __attribute__((aligned(4096)));
 

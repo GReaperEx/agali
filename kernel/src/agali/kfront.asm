@@ -268,6 +268,16 @@ ISR30:
     POP_ALL
     IRETQ
 
+; >>> Exception end here <<<
+
+global ISR32
+extern kbrd_handler
+ISR32:
+    PUSH_ALL
+    CALL kbrd_handler
+    POP_ALL
+    IRETQ
+
 section .bss
 
 global kernelStacks
