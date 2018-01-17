@@ -25,8 +25,8 @@ int printf(const char* format, ...)
         int sign = 0;
         char padding = ' ';
         int altForm = 0;
-        unsigned long minWidth = 0;
-        unsigned long precision = 0xFFFFFFFF;
+        int minWidth = 0;
+        int precision = 0x7FFFFFFF;
         int typeMod = 0;
         const char* altBuffer = NULL;
 
@@ -55,7 +55,9 @@ int printf(const char* format, ...)
         }
 
         if (isdigit(*format)) {
-            format += str2int(format, &minWidth, 10);
+            uint64 temp;
+            format += str2int(format, &temp, 10);
+            minWidth = temp;
         } else if (*format == '*') {
             ++format;
             minWidth = va_arg(args, int);
@@ -63,7 +65,9 @@ int printf(const char* format, ...)
 
         if (*format == '.') {
             if (isdigit(*++format)) {
-                format += str2int(format, &precision, 10);
+                uint64 temp;
+                format += str2int(format, &temp, 10);
+                precision = temp;
             } else if (*format == '*') {
                 ++format;
                 precision = va_arg(args, int);
@@ -112,7 +116,8 @@ int printf(const char* format, ...)
             }
 
             if (num < 0) {
-                int2str(-num, 10, buffer, sizeof(buffer));
+                buffer[0] = '-';
+                int2str(-num, 10, &buffer[1], sizeof(buffer) - 1);
             } else {
                 int2str(num, 10, buffer, sizeof(buffer));
             }
@@ -201,7 +206,7 @@ int printf(const char* format, ...)
 
         if (altBuffer != NULL) {
             len = strlen(altBuffer);
-            len = ((unsigned)len > precision ? precision : len);
+            len = (len > precision ? precision : len);
             if (!left && len < minWidth) {
                 for (i = 0; i < minWidth - len; ++i) {
                     putchar(padding);
@@ -220,7 +225,7 @@ int printf(const char* format, ...)
             }
         } else {
             len = strlen(buffer);
-            len = ((unsigned)len > precision ? precision : len);
+            len = (len > precision ? precision : len);
             if (!left && len < minWidth) {
                 for (i = 0; i < minWidth - len; ++i) {
                     putchar(padding);
@@ -263,6 +268,7 @@ char* gets(char* dst, int n)
     textui_showCursor(TRUE);
     while (i < n - 1) {
         dst[i++] = (c = kbrd_getchar());
+        textui_putchar(c);
         if (c == '\n') {
             break;
         }

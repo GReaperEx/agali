@@ -106,7 +106,7 @@ static kbrd_keys translateScancode(uint8* buffer, int bufSize, BOOL* wasPressed)
 
 void kbrd_handler(void)
 {
-    static uint8 buffer[8] = { 0 };
+    static uint8 buffer[4] = { 0 };
     static int bufCurSize = 0;
     kbrd_keys curKey = _KEY_AMOUNT;
     BOOL pressed;
@@ -167,6 +167,7 @@ static uint8 scanCodes[2][128] = {
       _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT,
       _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT,
       _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT },
+
     { _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT,
       _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT,
       KEY_PREV_TRACK, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT, _KEY_AMOUNT,

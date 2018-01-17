@@ -6,9 +6,14 @@
 #include <stddef.h>
 
 #define EOF -1
-#define putchar(c) (textui_putchar(c), (c))
 
 typedef long fpos_t;
+
+static inline int putchar(int c)
+{
+    textui_putchar(c);
+    return 0;
+}
 
 int puts(const char* str);
 int printf(const char* format, ...);

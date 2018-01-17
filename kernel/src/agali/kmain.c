@@ -46,11 +46,12 @@ void kmain(void)
     paging_init();
 
     DEBUG_PRINT("Initializing the 8259-PIC\n");
-    pic_remap(32, 38);
+    pic_remap(32, 40);
     for (i = 0; i < 16; ++i) {
         pic_disableIRQ(i);
     }
 
+    DEBUG_PRINT("Enabling PS/2 keyboard input.\n");
     kbrd_init();
     __asm__ __volatile__("sti");
 
