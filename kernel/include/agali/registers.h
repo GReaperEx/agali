@@ -114,6 +114,33 @@ typedef union {
     uint64 rvalue;
 } EFER;
 
+typedef struct {
+    uint64 RAX;
+    uint64 RCX;
+    uint64 RDX;
+    uint64 RBX;
+    uint64 __useless;
+    uint64 RBP;
+    uint64 RSI;
+    uint64 RDI;
+    uint64 R8;
+    uint64 R9;
+    uint64 R10;
+    uint64 R11;
+    uint64 R12;
+    uint64 R13;
+    uint64 R14;
+    uint64 R15;
+
+    uint64 RIP;
+    uint64 CS;
+
+    RFLAGS flags;
+
+    uint64 RSP;
+    uint64 SS;
+} StackState;
+
 static inline CR0 getCR0(void)
 {
     CR0 local;

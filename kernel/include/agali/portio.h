@@ -50,7 +50,7 @@ static inline void outb(uint16 port, uint8 value)
     );
 }
 
-static inline void outw(uint16 port, uint8 value)
+static inline void outw(uint16 port, uint16 value)
 {
     __asm__ __volatile__(
         "outw %%dx \n\t"
@@ -58,7 +58,7 @@ static inline void outw(uint16 port, uint8 value)
     );
 }
 
-static inline void outd(uint16 port, uint8 value)
+static inline void outd(uint16 port, uint32 value)
 {
     __asm__ __volatile__(
         "outl %%dx \n\t"
