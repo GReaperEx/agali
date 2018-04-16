@@ -58,6 +58,9 @@ static inline void invlpg(void* address)
     __asm__ __volatile__("invlpg (%0)" ::"r" (address) : "memory");
 }
 
-void reloadCR3(void);
+static inline void reloadCR3(void* PML4TpAddr)
+{
+    __asm__ __volatile__("mov %0, %%cr3 \n\t" ::"r" (PML4TpAddr) : "memory");
+}
 
 #endif // PAGING_H

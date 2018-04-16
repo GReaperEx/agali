@@ -7,6 +7,7 @@
 #include <agali/acpi.h>
 #include <agali/pic.h>
 #include <agali/kbrd.h>
+#include <agali/kmalloc.h>
 
 #include <stdio.h>
 #include <string.h>

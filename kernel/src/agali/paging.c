@@ -1,7 +1,10 @@
 #include <agali/paging.h>
 #include <agali/memmap.h>
+#include <agali/process.h>
+#include <agali/textui.h>
 
-static PageTableEntry globalPML4T[512] __attribute__((aligned(4096)));
+
+static PageTableEntry kernelPML4T[512] __attribute__((aligned(4096)));
 
 static PageTableEntry kernelPDPT[512] __attribute__((aligned(4096)));
 static PageTableEntry kernelPDT[512] __attribute__((aligned(4096)));
@@ -27,13 +30,13 @@ static inline PageEntry* _getPTentry(void* vAddr)
     return (PageEntry*)0xFFFFFF8000000000 + (((intptr)vAddr >> 12) & 0xFFFFFFFFF);
 }
 
-static struct {
+static volatile struct {
     uint64 curSize;
     uint64 curIndex;
     uint64** base;
 } pageStack;
 
-static uint64 curMemBound;
+static volatile uint64 curMemBound;
 static void* _nextAvailPage(void)
 {
     uint64 upperBound = memmap_getMemUpperBound();
@@ -52,14 +55,97 @@ static void* _nextAvailPage(void)
     return pAddr;
 }
 
+static void* _pageFromStack(void)
+{
+    void* pAddr = NULL;
+
+    if (pageStack.curIndex > 0) {
+        pAddr = pageStack.base[--pageStack.curIndex];
+    }
+
+    return pAddr;
+}
+
+static void _pageToStack(void* pAddr)
+{
+    if (pageStack.curIndex*8 >= pageStack.curSize) {
+        void* vAddr = (void*)((intptr)pageStack.base + pageStack.curSize);
+        void* pAddr2 = pageStack.base[--pageStack.curIndex];
+
+        PageTableEntry* pte;
+        PageEntry* pe;
+        int i;
+
+        pte = _getPML4entry(vAddr);
+        if (pte->P == 0) {
+            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
+            invlpg(_getPDTentry(vAddr));
+
+            PageTableEntry* newPDPT = (void*)((intptr)_getPDTentry(vAddr) & ~0xFFFUL);
+            for (i = 0; i < 512; ++i) {
+                newPDPT[i].rvalue = 0;
+            }
+        }
+
+        pte = _getPDTentry(vAddr);
+        if (pte->P == 0) {
+            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
+            invlpg(_getPDentry(vAddr));
+
+            PageTableEntry* newPDT = (void*)((intptr)_getPDentry(vAddr) & ~0xFFFUL);
+            for (i = 0; i < 512; ++i) {
+                newPDT[i].rvalue = 0;
+            }
+        }
+
+        pte = _getPDentry(vAddr);
+        if (pte->P == 0) {
+            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
+            invlpg(_getPTentry(vAddr));
+
+            PageEntry* newPT = (void*)((intptr)_getPTentry(vAddr) & ~0xFFFUL);
+            for (i = 0; i < 512; ++i) {
+                newPT[i].rvalue = 0;
+            }
+        }
+
+        pe = _getPTentry(vAddr);
+        pe->rvalue = ((uint64)pAddr2 & 0x000FFFFFFFFFF000) | 0x1;
+        pe->RW = TRUE;
+        pe->US = FALSE;
+        pe->G = TRUE;
+        invlpg(vAddr);
+
+        pageStack.curSize += 4096;
+    }
+    pageStack.base[pageStack.curIndex++] = pAddr;
+}
+
+static void* _allocPhysicalPage(void)
+{
+    void *newPage = NULL;
+
+    newPage = _pageFromStack();
+    if (newPage == NULL) {
+        newPage = _nextAvailPage();
+    }
+    if (newPage == NULL) {
+        // TODO: Implement some sort of page swapping or cleanup
+        textui_puts("FATAL: System is out of memory!\n");
+        process_abort(PROCESS_ABORT_MEMORY);
+    }
+
+    return newPage;
+}
+
 void paging_init(void)
 {
     uint64 i, j, k, kernelSize;
 
     kernelSize = *((uint32*)0x7C00);
 
-    globalPML4T[510].rvalue = ((intptr)_getPTentry(kernelPDPT)->pAddr << 12) | 0x3;
-    globalPML4T[511].rvalue = ((intptr)_getPTentry(globalPML4T)->pAddr << 12) | 0x3;
+    kernelPML4T[510].rvalue = ((intptr)_getPTentry(kernelPDPT)->pAddr << 12) | 0x3;
+    kernelPML4T[511].rvalue = ((intptr)_getPTentry(kernelPML4T)->pAddr << 12) | 0x3;
 
     kernelPDPT[0].rvalue = ((intptr)_getPTentry(kernelPDT)->pAddr << 12) | 0x3;
 
@@ -80,7 +166,7 @@ void paging_init(void)
     ::: "%eax", "memory"
     );
 
-    reloadCR3();
+    reloadCR3(paging_getPhysAddr(kernelPML4T));
 
     pageStack.base = (void*)j;
     k = ((uint64)kernelPT[i-1].pAddr << 12) + 4096;
@@ -99,6 +185,16 @@ void paging_init(void)
     for (i = 0; i < 0x100000; i += 4096) {
         paging_map((void*)i, (void*)i, TRUE, TRUE);
     }
+    paging_map((void*)0x100000, _allocPhysicalPage(), TRUE, TRUE);
+    // Bypass the flags for this particular page
+    _getPTentry((void*)0x100000)->G = 0;
+    invlpg((void*)0x100000);
+
+    // Setting necessary data for the idle process
+    ProcessData* data = (void*)0x100000;
+    data->pID = 0;
+    data->memMapLock = 0;
+    data->memAllocLock = 0;
 }
 
 void* paging_getPhysAddr(void* vAddr)
@@ -112,20 +208,7 @@ void* paging_getPhysAddr(void* vAddr)
     return NULL;
 }
 
-void reloadCR3(void)
-{
-    void* address = paging_getPhysAddr(globalPML4T);
-
-    __asm__ __volatile__("mov %0, %%cr3 \n\t" ::"r" (address) : "memory");
-}
-
-static void outOfMemory(void)
-{
-    textui_puts("FATAL: System is out of memory!\n");
-    for (;;) {
-        __asm__ __volatile__("hlt \n\t");
-    }
-}
+static volatile spinlock kernelMemMapLock;
 
 void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
 {
@@ -133,18 +216,19 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
     PageEntry* pe;
     int i;
 
+    volatile spinlock* toAcquire;
+
+    if (isSuper) {
+        toAcquire = &kernelMemMapLock;
+    } else {
+        toAcquire = &(((ProcessData*)0x100000)->memMapLock);
+    }
+
+    spinlock_acquire(toAcquire);
+
     pte = _getPML4entry(vAddr);
     if (pte->P == 0) {
-        if (pageStack.curIndex > 0) {
-            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
-        } else {
-            void* newAddr = _nextAvailPage();
-            if (newAddr == NULL) {
-                // TODO: Implement some sort of page swapping or cleanup
-                outOfMemory();
-            }
-            pte->rvalue = (uint64)newAddr | 0x3;
-        }
+        pte->rvalue = (uint64)_allocPhysicalPage() | 0x3;
         invlpg(_getPDTentry(vAddr));
 
         PageTableEntry* newPDPT = (void*)((intptr)_getPDTentry(vAddr) & ~0xFFFUL);
@@ -155,16 +239,7 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
 
     pte = _getPDTentry(vAddr);
     if (pte->P == 0) {
-        if (pageStack.curIndex > 0) {
-            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
-        } else {
-            void* newAddr = _nextAvailPage();
-            if (newAddr == NULL) {
-                // TODO: Implement some sort of page swapping or cleanup
-                outOfMemory();
-            }
-            pte->rvalue = (uint64)newAddr | 0x3;
-        }
+        pte->rvalue = (uint64)_allocPhysicalPage() | 0x3;
         invlpg(_getPDentry(vAddr));
 
         PageTableEntry* newPDT = (void*)((intptr)_getPDentry(vAddr) & ~0xFFFUL);
@@ -175,16 +250,7 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
 
     pte = _getPDentry(vAddr);
     if (pte->P == 0) {
-        if (pageStack.curIndex > 0) {
-            pte->rvalue = (uint64)pageStack.base[--pageStack.curIndex] | 0x3;
-        } else {
-            void* newAddr = _nextAvailPage();
-            if (newAddr == NULL) {
-                // TODO: Implement some sort of page swapping or cleanup
-                outOfMemory();
-            }
-            pte->rvalue = (uint64)newAddr | 0x3;
-        }
+        pte->rvalue = (uint64)_allocPhysicalPage() | 0x3;
         invlpg(_getPTentry(vAddr));
 
         PageEntry* newPT = (void*)((intptr)_getPTentry(vAddr) & ~0xFFFUL);
@@ -203,39 +269,63 @@ void paging_map(void* vAddr, void* pAddr, BOOL isSuper, BOOL isWritable)
     pe->US = (isSuper == FALSE);
     pe->G = (isSuper == TRUE);
     invlpg(vAddr);
+
+    spinlock_release(toAcquire);
 }
 
 void paging_unmap(void* vAddr, BOOL freePhysical)
 {
+    volatile spinlock* toAcquire;
+    BOOL isSuper = FALSE;
+    if (_getPML4entry(vAddr)->P && _getPDTentry(vAddr)->P && _getPDentry(vAddr)->P) {
+        isSuper = (_getPTentry(vAddr)->US == 0);
+    }
+
+    if (isSuper) {
+        toAcquire = &kernelMemMapLock;
+    } else {
+        toAcquire = &(((ProcessData*)0x100000)->memMapLock);
+    }
+
+    spinlock_acquire(toAcquire);
+
     if (_getPML4entry(vAddr)->P && _getPDTentry(vAddr)->P && _getPDentry(vAddr)->P) {
         PageEntry* entry = _getPTentry(vAddr);
         if (entry->P) {
             entry->P = 0;
             if (freePhysical) {
-                if (pageStack.curIndex*8 >= pageStack.curSize) {
-                    paging_map((void*)((intptr)pageStack.base + pageStack.curSize), (void*)((uint64)entry->pAddr << 12), TRUE, TRUE);
-                    pageStack.curSize += 4096;
-                } else {
-                    pageStack.base[pageStack.curIndex++] = (void*)((uint64)entry->pAddr << 12);
-                    entry->rvalue = 0;
-                }
+                _pageToStack((void*)((uint64)entry->pAddr << 12));
+                entry->rvalue = 0;
             }
             invlpg(vAddr);
         }
     }
+
+    spinlock_release(toAcquire);
 }
 
 /* User memory is allocated conventionally, from 0x101000 to 0x8000000000 (0x100000 page contains process-specific info)
    Kernel memory is allocated from top to bottom, from 0xFFFFFF7FFFFFF000 to 0xFFFFFF0000000000 */
 
+static volatile spinlock kernelMemAllocLock;
+
 // Kernel memory is always global
 void* paging_alloc(uint64 amount, BOOL isSuper, BOOL isWritable)
 {
     uint64 lowBound, highBound;
+    volatile spinlock* toAcquire = NULL;
+
+    if (isSuper) {
+        toAcquire = &kernelMemAllocLock;
+    } else {
+        toAcquire = &(((ProcessData*)0x100000)->memAllocLock);
+    }
 
     if (amount == 0) {
         return NULL;
     }
+
+    spinlock_acquire(toAcquire);
 
     lowBound = highBound = 0;
     if (isSuper) {
@@ -289,28 +379,29 @@ void* paging_alloc(uint64 amount, BOOL isSuper, BOOL isWritable)
         for (; lowBound < highBound; lowBound += 4096) {
             void* physical = NULL;
 
-            if (pageStack.curIndex > 0) {
-                physical = (void*)((uint64)pageStack.base[--pageStack.curIndex] | 0x3);
-            } else {
-                physical = _nextAvailPage();
-                if (physical == NULL) {
-                    // TODO: Implement some sort of page swapping or cleanup
-                    outOfMemory();
-                }
-            }
+            physical = _allocPhysicalPage();
 
             paging_map((void*)lowBound, physical, isSuper, isWritable);
         }
 
+        spinlock_release(toAcquire);
         return address;
     }
 
+    spinlock_release(toAcquire);
     return NULL;
 }
 
 void* paging_realloc(void* oldPtr, uint64 oldAmount, uint64 newAmount, BOOL isSuper, BOOL isWritable)
 {
     BOOL wasSuper, wasWritable;
+    volatile spinlock* toAcquire = NULL;
+
+    if (isSuper) {
+        toAcquire = &kernelMemAllocLock;
+    } else {
+        toAcquire = &(((ProcessData*)0x100000)->memAllocLock);
+    }
 
     if (newAmount == 0) {
         paging_free(oldPtr, oldAmount);
@@ -329,6 +420,8 @@ void* paging_realloc(void* oldPtr, uint64 oldAmount, uint64 newAmount, BOOL isSu
     if (isSuper != wasSuper || isWritable != wasWritable) {
         return NULL;
     }
+
+    spinlock_acquire(toAcquire);
 
     if (newAmount < oldAmount) {
         intptr trimLow = (intptr)oldPtr + newAmount*4096;
@@ -349,17 +442,29 @@ void* paging_realloc(void* oldPtr, uint64 oldAmount, uint64 newAmount, BOOL isSu
         oldPtr = newPtr;
     }
 
+    spinlock_release(toAcquire);
+
     return oldPtr;
 }
 
 void paging_free(void* oldPtr, uint64 oldAmount)
 {
+    volatile spinlock* toAcquire = NULL;
+
     if (oldPtr != NULL) {
         uint64 i;
 
+        if (_getPTentry(oldPtr)->US == 0) {
+            toAcquire = &kernelMemAllocLock;
+        } else {
+            toAcquire = &(((ProcessData*)0x100000)->memAllocLock);
+        }
+
+        spinlock_acquire(toAcquire);
         for (i = 0; i < oldAmount; ++i) {
             paging_unmap((void*)((intptr)oldPtr + i*4096), TRUE);
         }
+        spinlock_release(toAcquire);
     }
 }
 
